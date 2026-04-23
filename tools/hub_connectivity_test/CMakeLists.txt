@@ -1,0 +1,7 @@
+add_executable(hub_connectivity_test main.cpp)
+target_link_libraries(hub_connectivity_test PRIVATE camera_sdk)
+if(WIN32)
+  target_link_libraries(hub_connectivity_test PRIVATE ws2_32)
+endif()
+camera3d_register_post_build_copy_dlls(hub_connectivity_test)
+install(TARGETS hub_connectivity_test RUNTIME DESTINATION ${CAMERA_3D_INSTALL_BINDIR})

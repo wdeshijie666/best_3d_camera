@@ -1,0 +1,47 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "Win32-MSVC",
+      "compilerPath": "D:/SoftWare/VS2019/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64/cl.exe",
+      "windowsSdkVersion": "10.0.19041.0",
+      "intelliSenseMode": "windows-msvc-x64",
+      "cppStandard": "c++17",
+      "cStandard": "c11",
+      "defines": [
+        "WIN32",
+        "_WINDOWS",
+        "UNICODE",
+        "_UNICODE",
+        "CAMERA3D_HAVE_BREAKPAD=1",
+        "CAMERA3D_USE_GRPC_STUB=1"
+      ],
+      "includePath": [
+        "${workspaceFolder}",
+        "${workspaceFolder}/libs/camera_driver/include",
+        "${workspaceFolder}/libs/camera_proto_stub/include",
+        "${workspaceFolder}/libs/capture_orchestrator/include",
+        "${workspaceFolder}/libs/ipc_shmem/include",
+        "${workspaceFolder}/libs/pipeline_api/include",
+        "${workspaceFolder}/libs/platform_diag/include",
+        "${workspaceFolder}/libs/serial_port/include",
+        "${workspaceFolder}/sdk/camera_sdk/include",
+        "${workspaceFolder}/services/hub_service",
+        "${workspaceFolder}/services/recon_service",
+        "${workspaceFolder}/proto",
+        "D:/work/depthvision/GitLab/3rdParty/boost_1_90_0",
+        "D:/work/depthvision/GitLab/3rdParty/spdlog/include",
+        "D:/work/depthvision/GitLab/3rdParty/breakpad-main/src"
+      ],
+      "browse": {
+        "path": [
+          "${workspaceFolder}",
+          "D:/work/depthvision/GitLab/3rdParty/boost_1_90_0",
+          "D:/work/depthvision/GitLab/3rdParty/spdlog/include",
+          "D:/work/depthvision/GitLab/3rdParty/breakpad-main/src"
+        ],
+        "limitSymbolsToIncludedHeaders": false
+      }
+    }
+  ]
+}

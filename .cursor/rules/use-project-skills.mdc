@@ -1,0 +1,22 @@
+---
+description: 在开展实质性工作前，根据任务匹配并读取项目 .cursor/skills 下的 SKILL.md
+alwaysApply: true
+---
+
+# 项目 Skills 前置流程
+
+在每次需要使用工具执行、代码修改、多步排查或仓库内调查之前：
+
+1. **匹配**：将用户请求与仓库根目录下 `.cursor/skills/` 中每个子文件夹里 `SKILL.md` 的 YAML `description`（以及文件夹名、正文标题）对照，找出与当前任务相关的技能；可有多项时按相关度排序。
+2. **强制候选（不得跳过 Read）**：满足下列**任一**条件时，在调用编辑类工具或给出实现方案之前，**必须**用 Read 读取对应文件夹内的完整 `SKILL.md`（不得以「无其它命中」为由跳过）：
+   - 用户消息属于**需求、功能或改动说明**（要改代码 / CMake / 目录 / 协议等）→ 必读 `.cursor/skills/framework-readme-sync/SKILL.md`，再按其正文判断是否更新根目录 **`README.md`**。
+   - 属于**新增功能、功能修改或代码行为变更**→ 必读 `.cursor/skills/feature-readme-context/SKILL.md`，再按其正文判断关联度及是否读 **`README.md`**。
+   - **新增或修改需求**且将改动 **C++ 等实现逻辑**（`.cpp`/`.h` 或同类运行时行为，非仅改 CMake 变量名/纯文档）→ 必读 `.cursor/skills/leak-and-thread-safety-check/SKILL.md`，实现时沿调用链落实其中的内存与线程安全约束。
+   - **新增或修改** `.cpp`/`.h`（或其它需长期维护的 C++ 源码）→ 必读 `.cursor/skills/code-change-google-comments/SKILL.md`，并按其中要求配套文件头、接口与实现注释；该技能要求同时遵守 **`chinese-code-comments`**（须 Read 其 `SKILL.md`）。
+3. **其它技能**：对未被上款点名的技能，仍按第 1 条做相关性判断；**若无明显相关**，不要为凑流程强行 Read 其它 `SKILL.md`。
+4. **执行**：凡已 Read 的技能，严格按其步骤执行；多项相关时依次读取并综合执行。
+5. **扩展**：用户要求新增工作流时，在 `.cursor/skills/<kebab-case-name>/SKILL.md` 下新建目录与文件；`description` 必须同时写清「做什么」和「何时应使用」（触发词、文件类型、场景），以便后续自动匹配。
+
+技能物理路径：`.cursor/skills/<skill-name>/SKILL.md`。
+
+**说明**：Cursor 会把项目规则注入对话，但「是否调用 Read 读磁盘上的 SKILL」仍依赖模型遵守本文件；若发现未执行，请在 Cursor 中确认已打开的工作区根目录为包含 `.cursor` 的仓库根（`best_project`），并新开一条 Agent 对话重试。

@@ -1,41 +1,102 @@
-# Prerequisites
-*.d
+# =============================================================================
+# best_project — 构建产物、工具缓存与本地运行输出（保持源码与文档可完整提交）
+# 三方预编译库请放在本仓库外或本机目录，用 THIRD_PARTY_LIBRARY_DIR 等指向，勿将大体积 bin 提交到 Git。
+# =============================================================================
 
-# Compiled Object files
+# --- 先决 / 编译中间文件（继承常见 C/C++ 规则）---
+*.d
 *.slo
 *.lo
 *.o
 *.obj
-
-# Precompiled Headers
 *.gch
 *.pch
-
-# Linker files
 *.ilk
-
-# Debugger Files
 *.pdb
+*.dwo
+*.iobj
+*.ipdb
+*.tlog
+*.suo
+*.user
+*.userosscache
+*.rsuser
+*.sdf
+*.db
+*.opendb
 
-# Compiled Dynamic libraries
 *.so
+*.so.*
 *.dylib
+# 运行时依赖的 DLL 如确需进仓库，使用: git add -f path/to.dll
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
 *.lai
 *.la
+# 预编译静态库如确需进仓库，使用: git add -f
 *.a
 *.lib
-
-# Executables
 *.exe
 *.out
 *.app
 
-# debug information files
-*.dwo
+# --- CMake 与多工作区构建目录（build/ 在任意子目录下均匹配）---
+build/
+build2/
+build3/
+build4/
+build_*/
+build_viewer/
+build_vs2019/
+build_nmake_cc/
+out/
+install/
+dist/
+cmake-build-*/
+CMakeCache.txt
+CMakeUserPresets.json
+CTestTestfile.cmake
+_deps/
+.cache/
+
+# install/export 到仓库树内的目录（与 CMAKE_INSTALL_PREFIX 等一致时）
+**/camera_3d_install/**
+**/export/**
+
+# --- 本地/运行时输出 ---
+logs/
+recv_images/
+recon_img_save/
+*.dmp
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.eggs/
+*.egg-info/
+
+# --- IDE / 系统杂项 ---
+.vs/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+Desktop.ini
+# 勿全局忽略 *.log，以免误伤带 .log 后缀的说明文件；只忽略 logs/ 目录即可
+
+# --- 包管理 / 杂项工作目录（若放在仓库内）---
+vcpkg_installed/
+conan/
+.conan/
+node_modules/
+
+# 可选：整目录不纳入时取消下一行注释
+# tmp_smoke_sdk_client/
+
+# 本地打包备份（如误放在 libs/ 下）；需要入库的小 zip 用 git add -f
+*.7z
+*文本文档*.txt
+
+# =============================================================================
+# 拉仓后使用提示（非忽略项）:
+# 提交 README、*.md、proto/、config 模板、libs 源码、cmake/、.cursor/ 等；大资源用 Git LFS 或外置网盘；配置本地 THIRD_PARTY。
+# =============================================================================

@@ -1,0 +1,25 @@
+# 日志子系统（platform_diag）可移交文件清单
+# 路径均相对于本仓库根目录（best_project）。打 zip 时可按此列表或整目录复制。
+
+## 必含：本库源与头文件
+libs/platform_diag/CMakeLists.txt
+libs/platform_diag/include/platform_diag/logging.h
+libs/platform_diag/include/platform_diag/diag_config.h
+libs/platform_diag/include/platform_diag/build_info.h
+libs/platform_diag/include/platform_diag/crash_handler.h
+libs/platform_diag/src/logging.cpp
+libs/platform_diag/src/diag_config.cpp
+libs/platform_diag/src/crash_handler.cpp
+
+## 建议一并提供：与 install/find_package 配套的 CMake 模板
+cmake/PlatformDiagConfig.cmake.in
+
+## 说明
+- 根工程 CMakeLists.txt 中有 spdlog 的查找与 `camera3d_spdlog_headers` 的 INTERFACE 回退；若他组独立成库，可只使用上方文件 + 自写 `find_package(spdlog CONFIG REQUIRED)` 或头文件包。
+- 不列出根 CMakeLists 本身，避免误拷整仓；他组以本文档「依赖」与 README_LOG_MODULE.md 为准集成。
+
+## 同目录说明文档
+- README_LOG_MODULE.md：日志、DiagConfig、集成步骤。
+- README_CRASH_HANDLER.md：InstallCrashHandlers、Windows MiniDump、terminate 与调用顺序。
+- EXAMPLE_CMAKE_SPDLOG.md：例如 D:/libs/spdlog 下的 CMake 与 main 最小示例（日志+crash_handler）。
+- examples/minimal_app/：可独立 cmake 的示例工程（CMakeLists.txt + main.cpp + README.txt）。

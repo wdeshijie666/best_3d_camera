@@ -1,0 +1,33 @@
+{
+  "_comment": "运行时可复制为 config/hub_service.json；更全的占位说明见 hub_service.template.json",
+  "hub": {
+    "listen": "0.0.0.0:50051"
+  },
+  "projector": {
+    "com_index": "3"
+  },
+  "discovery": {
+    "enable": "true",
+    "udp_port": "55431",
+    "interval_ms": "1500",
+    "advertise_host": "",
+    "device_model": "best-3d",
+    "device_serial": "best-3d-p001"
+  },
+  "cameras": [
+    {
+      "camera": {
+        "ip": "192.168.1.101",
+        "serial_number": "LEFT_CAM_SERIAL",
+        "backend": "daheng"
+      }
+    },
+    {
+      "camera": {
+        "ip": "192.168.1.102",
+        "serial_number": "RIGHT_CAM_SERIAL",
+        "backend": "daheng"
+      }
+    }
+  ]
+}

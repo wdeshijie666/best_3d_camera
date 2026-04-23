@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+
+# CAMERA3D_SDK_GRPC_STUB_VALUE：1 表示桩模式，不拉取 gRPC
+if(@CAMERA3D_SDK_GRPC_STUB_VALUE@ EQUAL 0)
+  find_dependency(gRPC)
+  find_dependency(Protobuf)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/CameraSDKTargets.cmake")

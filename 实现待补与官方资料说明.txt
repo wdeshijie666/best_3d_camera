@@ -1,0 +1,123 @@
+3D 相机工程 — 实现边界与建议提供的官方/现场资料
+====================================================
+
+下列模块当前为「可编译骨架 / 占位逻辑」，对接真实硬件或算法时需要你侧提供官方示例、
+现场工程或协议文档，以便把模糊点落到确定实现。
+
+----------------------------------------------------------------------
+1) 大恒相机（Galaxy / GxIAPICPP）— 优先级：高
+----------------------------------------------------------------------
+位置：
+- 桩：libs/camera_driver/src/daheng_camera_adapter_stub.cpp
+- 真实适配（可选编译）：libs/camera_driver/src/daheng_camera_galaxy.cpp
+- CMake：cmake/DaHengGalaxy.cmake；开关 CAMERA3D_WITH_DAHENG_GALAXY、路径 DAHENG_GALAXY_SDK_ROOT /
+  DAHENG_GALAXY_LIB_DIR
+
+本机已约定的参考路径（可按机器调整）：
+- SDK 头文件（3rdParty）：D:\work\depthvision\GitLab\3rdParty\DaHeng SDK
+- 官方 C++ 示例：D:\work\SDK\GalaxySDK\Development\Samples\C++（如 GxSimpleGrab：DQBuf 取流）
+- 现场软/硬触发与开采顺序参考：D:\work\SelfPro\geelydetectapp-master\libs\SpeedCamera\DaHeng\DaHengCamera.cpp
+  （当前工程硬触发枚举与其中注释块一致：TriggerSource=Line0、TriggerActivation=RisingEdge；
+  LineSelector/Line3 等需按机型与电气设计再定。）
+
+需要你提供：
+- 与目标机型、接口（GigE/USB3）一致的 Galaxy 安装包；确保含 C++ SDK 的 lib\x64（或 x86）与运行时 DLL。
+- 若 3rdParty 仅有 inc、无 lib：在配置时设置 -DDAHENG_GALAXY_LIB_DIR 指向完整安装的
+  「Development\C++ SDK\lib\x64」等目录。
+
+说明：hub 注册 CreateDaHengCameraAdapter()；未链接 Galaxy 时内部仍用桩。链接成功后映射关系为
+GxIAPICPP（OpenDeviceBySN、GetRemoteFeatureControl、StartGrab、AcquisitionStart 等）。
+异步采集走 RegisterCaptureCallback；CameraManager::SetResultCallback 收到 DahengGalaxyCameraResult
+（CImageDataPointer，无额外像素 memcpy），GrabOne 仍用 DQBuf/QBuf。回调返回后适配器会 QBuf，跨线程持有请 clone 或自行拷贝缓冲区。
+
+----------------------------------------------------------------------
+2) 一体机串口协议（光源 + 投采触发）— 优先级：高
+----------------------------------------------------------------------
+位置（已与 geely SpeedSerialPort 对齐）：
+- libs/serial_port/include/serial_port/speed_serial_projector.h
+- libs/serial_port/src/speed_serial_projector.cpp（6 字节帧、EB9000AA / EB900055 应答流程）
+- libs/serial_port/include/serial_port/projector_command.h（BuildPlaceholderFireCapture 等）
+- 参考源码：D:\work\SelfPro\geelydetectapp-master\SpeedSerialPort
+
+说明：Production / set 指令表、应答比对方式与 SpeedSerialPort.cpp 保持一致；编排层可使用
+HardTriggerOrchestrator::FireSpeedProductionAndGrab 完成「握手 + 抓图」。若现场硬件需在串口上
+开启 RTS 等 DCB 选项，可在 ISerialPort Win32 实现中按设备要求扩展（原 CSerialPort 使用
+RTS_CONTROL_ENABLE）。
+
+----------------------------------------------------------------------
+3) 投采编排（硬触发 + 串口 + 相机回调）— 优先级：中高
+----------------------------------------------------------------------
+位置：libs/capture_orchestrator（HardTriggerOrchestrator）
+
+现场约定（已按此实现）：外触发线已接好 -> 相机硬触发 -> StartAsyncGrab 注册回调 -> 发串口 ->
+一体机自行编排投采时序；业务在回调中收帧，或由 Fire*CollectViaCallback 代为阻塞收集。
+
+主要 API：FireProjectorAndCollectViaCallback、FireSpeedProductionAndCollectViaCallback；
+PrepareHardwareTriggerAsyncGrab 用于「先注册回调、后自行发串口」的两阶段写法。
+
+若需与现场不同的超时、多帧数量策略或重试状态机，可在中枢层基于上述 API 再包一层。
+
+----------------------------------------------------------------------
+4) 共享内存与 gRPC 元数据（offset / 多平面）— 优先级：中
+----------------------------------------------------------------------
+位置：
+- libs/ipc_shmem（ShmRingBuffer 单段环形槽；TryReadLatestSlot 等）
+- services/hub_service/hub_app_grpc.cpp 中 GetDepth 对 ShmFrameRef.offset_bytes 曾占位为 0
+
+需要你提供：
+- 是否坚持「单段内存 + 槽内绝对 offset」（当前实现），还是需要多 region / 多平面
+  （深度 + IR + 标定）？若为多平面，需约定第二平面在槽内的布局或独立 region 名。
+- 若客户端使用非 Boost 的 attach 方式，需确认 Windows/Linux 下对象命名规则是否满足现场权限
+  （Session/Global 前缀等）。
+
+说明：架构文档 §5.1 建议固定头 + 槽位环；若产品冻结另一版协议，请提供一页二进制布局说明或
+  参考实现，以便改 ShmSlotHeader / RPC 字段。
+
+----------------------------------------------------------------------
+5) 检测 / 重建算法 — 优先级：中（视产品阶段）
+----------------------------------------------------------------------
+位置：libs/pipeline_api（IDetectionPipeline / IReconstructionPipeline；Logging 为占位）
+
+需要你提供：
+- 算法库的 .lib/.dll、头文件、调用约定（输入：原始帧视图 ShmFrameView；输出：blob 格式）。
+- 若需 GPU / 指定 CUDA 版本，请在 THIRD_PARTY 或环境说明中写明。
+
+说明：当前 recon_service 仅在读到新 seq 时调用 Logging 实现；替换为
+CreateXxxPipeline 的工厂即可接入真算法。
+
+----------------------------------------------------------------------
+6) gRPC / Protobuf 工程化 — 优先级：中
+----------------------------------------------------------------------
+位置：CAMERA3D_USE_GRPC_STUB、camera_proto、SDK gRPC 客户端
+
+需要你提供（若现场有规范）：
+- 是否使用 TLS（服务端证书、客户端校验）；官方或内部 gRPC C++ 安全通道示例。
+- 服务发现或固定端口策略；与防火墙/网闸相关的端口清单。
+
+说明：当前为 InsecureChannel；上线前需按贵司安全要求替换凭据与 channel 参数。
+
+----------------------------------------------------------------------
+7) Breakpad 与崩溃符号 — 优先级：低
+----------------------------------------------------------------------
+位置：platform_diag（Windows 默认 dbghelp MiniDump）；THIRD_PARTY 可选 breakpad
+
+需要你提供：
+- 若要求与 Linux 统一的 breakpad 产物格式：breakpad 客户端构建方式及符号化流程
+  （minidump_stackwalk / dump_syms）在贵司 CI 中的标准做法。
+
+----------------------------------------------------------------------
+8) 非 Windows 串口 — 优先级：视部署平台
+----------------------------------------------------------------------
+位置：serial_port（CreateSerialPortWin32；非 Windows 返回 nullptr）
+
+需要你提供：
+- 若 Linux 部署：是否采用 termios + /dev/ttyUSBx，或 asio；可参考的官方/Boost.Asio 串口示例。
+
+----------------------------------------------------------------------
+总结：最急需你提供的材料
+----------------------------------------------------------------------
+1. 大恒 GxIAPI 官方 C++ 示例（与当前 SDK 版本一致）。
+2. 一体机串口完整协议或 SpeedSerialPort 中可移植的组帧与收发逻辑。
+3. 硬触发 + 串口 + 采图的实际时序说明或现场可运行参考工程片段。
+
+提供以上三项后，相机适配器、投采编排与共享内存元数据三处「模糊实现」可收敛为可验收代码。

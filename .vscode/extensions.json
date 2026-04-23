@@ -1,0 +1,6 @@
+{
+  "recommendations": [
+    "anysphere.cpptools",
+    "ms-vscode.cmake-tools"
+  ]
+}

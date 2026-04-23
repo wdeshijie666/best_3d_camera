@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(Threads)
+
+include("${CMAKE_CURRENT_LIST_DIR}/PlatformDiagTargets.cmake")
+
+# 使用 3rdParty 仅头文件 spdlog 时，导出目标含 camera3d::camera3d_spdlog_headers，不再要求系统 spdlogConfig
+if(NOT TARGET camera3d::camera3d_spdlog_headers)
+  find_dependency(spdlog CONFIG)
+endif()

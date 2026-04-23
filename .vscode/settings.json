@@ -1,0 +1,9 @@
+{
+  "editor.multiCursorModifier": "alt",
+  "C_Cpp.intelliSenseEngine": "default",
+  "C_Cpp.errorSquiggles": "enabled",
+  "C_Cpp.default.intelliSenseMode": "windows-msvc-x64",
+  "C_Cpp.default.cppStandard": "c++17",
+  "cmake.buildDirectory": "${workspaceFolder}/build_vs2019",
+  "cmake.configureOnOpen": true
+}

@@ -1,0 +1,30 @@
+Windows 服务注册说明（Camera3D 中枢 / 重建）
+================================================
+
+一、前置条件
+1. 已用 CMake 生成 Release（或 Debug）构建，并得到 hub_service.exe、recon_service.exe。
+2. 上述 exe 及其运行所需 DLL（gRPC、Boost 运行库等）位于同一目录，或已加入系统 PATH。
+3. 使用具备管理员权限的 PowerShell。
+
+二、快速注册
+1. 编辑 scripts\install-windows-services.ps1 中的 -BinDir，指向你的 bin 目录（默认可为仓库下的 build\bin）。
+2. 以管理员执行：
+   powershell -ExecutionPolicy Bypass -File scripts\install-windows-services.ps1
+
+脚本行为简述：
+- 创建服务 Camera3DHub、Camera3DRecon，启动类型为自动（开机自启）；若本机仍有旧版 Camera3DDetect，脚本会先删除。
+- 配置失败重启策略（sc failure），服务异常退出后按间隔自动拉起（具体次数/间隔可在脚本中改）。
+
+三、常用命令
+- 启动：Start-Service Camera3DHub
+- 停止：Stop-Service Camera3DHub
+- 查看状态：Get-Service Camera3D*
+
+四、卸载
+依次停止服务后执行：
+  sc delete Camera3DHub
+  sc delete Camera3DRecon
+
+五、注意
+- 重建服务已接 platform_diag（spdlog）与 Boost 共享内存；注册为服务后默认仅心跳，算法库接入后改主循环。
+- CAMERA3D_USE_GRPC_STUB=ON 时 hub_service 不监听 gRPC，仅适合验证进程、日志与相机抽象；正式环境请配置 THIRD_PARTY 中 gRPC/Protobuf 并关闭该选项。

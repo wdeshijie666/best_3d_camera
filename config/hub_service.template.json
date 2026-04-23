@@ -1,0 +1,35 @@
+{
+  "_template_readme": "复制本文件为 config/hub_service.json（或设置环境变量 CAMERA3D_HUB_CONFIG 指向你的路径）后，将所有占位示例改为真实值。JSON 为轻量解析，请保持字段名与双引号格式。",
+  "hub": {
+    "listen": "0.0.0.0:50051"
+  },
+  "projector": {
+    "com_index": "3"
+  },
+  "discovery": {
+    "enable": "true",
+    "udp_port": "55431",
+    "interval_ms": "1500",
+    "advertise_host": "192.168.1.100",
+    "device_model": "best-3d",
+    "device_serial": "best-3d-p001"
+  },
+  "cameras": [
+    {
+      "camera": {
+        "slot_note": "示例：左/第一路槽位，顺序对应 Hub 会话槽位从左到右",
+        "ip": "192.168.1.101",
+        "serial_number": "EXAMPLE-SERIAL-LEFT",
+        "backend": "daheng"
+      }
+    },
+    {
+      "camera": {
+        "slot_note": "示例：右/第二路槽位",
+        "ip": "192.168.1.102",
+        "serial_number": "EXAMPLE-SERIAL-RIGHT",
+        "backend": "daheng"
+      }
+    }
+  ]
+}

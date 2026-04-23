@@ -1,0 +1,16 @@
+# 根据 CONFIG 将 AIR SDK 的 Debug/Release DLL 拷贝到 exe 目录
+# 用法: cmake -DAIR_SDK_BIN=... -DDEST_DIR=... -DCONFIG=Debug|Release -P CopyAirSdkDlls.cmake
+if(NOT AIR_SDK_BIN OR NOT DEST_DIR OR NOT CONFIG)
+    message(FATAL_ERROR "CopyAirSdkDlls.cmake 需要 AIR_SDK_BIN, DEST_DIR, CONFIG")
+endif()
+if(CONFIG STREQUAL "Debug")
+    set(AIR_DLLS "${AIR_SDK_BIN}/AIRScannerd.dll" "${AIR_SDK_BIN}/AIRScannerNetd.dll")
+else()
+    set(AIR_DLLS "${AIR_SDK_BIN}/AIRScanner.dll" "${AIR_SDK_BIN}/AIRScannerNet.dll")
+endif()
+foreach(dll IN LISTS AIR_DLLS)
+    if(EXISTS "${dll}")
+        file(COPY "${dll}" DESTINATION "${DEST_DIR}")
+        message(STATUS "已拷贝: ${dll} -> ${DEST_DIR}")
+    endif()
+endforeach()

@@ -1,0 +1,223 @@
+// 控制面 + 数据面元数据：大块深度/点云/检测结果通过共享内存传递，RPC 仅传会话、槽位与序号。
+syntax = "proto3";
+
+package camera3d.hub.v1;
+
+option cc_enable_arenas = true;
+
+// ---------------------------------------------------------------------------
+// 通用
+// ---------------------------------------------------------------------------
+
+message Empty {}
+
+message Status {
+  int32 code = 1;   // 0 成功，非 0 为错误码（由实现侧统一定义）
+  string message = 2;
+}
+
+// 共享内存帧引用：消费者据此 attach 同一段并读取 payload
+message ShmFrameRef {
+  string region_name = 1;  // 跨进程共享内存区名
+  uint64 seq = 2;          // 单调序号，用于丢帧与对齐
+  uint64 offset_bytes = 3; // 相对映射基址偏移
+  uint64 size_bytes = 4;   // 有效负载长度
+  uint32 width = 5;
+  uint32 height = 6;
+  uint32 pixel_format = 7; // 枚举由实现侧头文件定义，proto 保持可扩展
+  int64 timestamp_unix_ns = 8;
+}
+
+// ---------------------------------------------------------------------------
+// 连接与采集
+// ---------------------------------------------------------------------------
+
+message ConnectRequest {
+  string device_ip = 1;
+  string session_hint = 2; // 可选：上层追踪 ID
+  // 投影仪/一体机串口：Windows COM 序号（与 SerialPortManager::Open 一致）。0 表示 Hub 不打开串口（联调/无投采）。
+  uint32 projector_com_index = 3;
+}
+
+message ConnectReply {
+  Status status = 1;
+  string session_id = 2;
+}
+
+message DisconnectRequest {
+  string session_id = 1;
+}
+
+message DisconnectReply {
+  Status status = 1;
+}
+
+message CaptureRequest {
+  string session_id = 1;
+  bool async = 2; // true：串口发出后立即返回，相机帧与管线在后台完成，客户端用 GetDepth 拉取
+  // 上层唯一采集 ID（必填非 0）；Hub 用于映射采集与共享内存结果，并在 CaptureReply / DepthReply 回传。
+  uint64 client_capture_id = 3;
+  bool with_detection_pipeline = 4;     // 协议保留；Hub 当前忽略（检测并入重建侧规划）
+  bool with_reconstruction_pipeline = 5;  // true：Hub 为重建结果预留 SHM final 槽占位
+  // serial::ProductionCommand 的整数值；0 表示默认 kFromImage1ToEnd
+  uint32 projector_op = 6;
+  // 联调：Hub 写 raw 到 SHM 后触发重建测试 RPC，并由重建回写 echo SHM + Hub.TestSaveReconEcho 落盘验证回路
+  bool test_recon_shm_loopback = 7;
+  // 联调：Hub 从 D:/best_project/test_image 读取测试图并直接内联回传到 CaptureReply
+  bool test_inline_image_reply = 8;
+}
+
+message CaptureReply {
+  Status status = 1;
+  // 与 client_capture_id 对齐，便于旧客户端仅用 job_id 关联；建议与 CaptureRequest.client_capture_id 相同。
+  uint64 job_id = 2;
+  uint64 client_capture_id = 3;
+  // 联调：若 test_inline_image_reply=true 且服务端开启测试开关，则携带图片二进制。
+  string inline_image_name = 4;
+  bytes inline_image_payload = 5;
+}
+
+message ExposureRequest {
+  string session_id = 1;
+  double microseconds = 2; // 写入；读请求可忽略或填 0
+}
+
+message ExposureReply {
+  Status status = 1;
+  double microseconds = 2;
+}
+
+message GainRequest {
+  string session_id = 1;
+  double gain_db = 2;
+}
+
+message GainReply {
+  Status status = 1;
+  double gain_db = 2;
+}
+
+// ---------------------------------------------------------------------------
+// 统一参数读写（与 camera_sdk::best::ParameterType 数值对齐；当前开放 2D 相机项）
+// ---------------------------------------------------------------------------
+
+enum HubParameterType {
+  HUB_PARAMETER_TYPE_INVALID = 0;
+  // 2D 相机曝光（微秒）
+  HUB_PARAMETER_TYPE_EXPOSURE_2D = 1;
+  // 2D 相机增益（dB）
+  HUB_PARAMETER_TYPE_GAIN_2D = 2;
+  // 2D 相机伽马（线性浮点）
+  HUB_PARAMETER_TYPE_GAMMA_2D = 3;
+}
+
+message HubParameterPair {
+  HubParameterType type = 1;
+  double value = 2;
+}
+
+message SetParametersRequest {
+  string session_id = 1;
+  repeated HubParameterPair parameters = 2;
+}
+
+message SetParametersReply {
+  Status status = 1;
+}
+
+message GetParametersRequest {
+  string session_id = 1;
+  // 与 HubParameterType 枚举值一致；仅请求列出的类型
+  repeated int32 parameter_types = 2;
+}
+
+message GetParametersReply {
+  Status status = 1;
+  repeated HubParameterPair parameters = 2;
+}
+
+message DepthRequest {
+  string session_id = 1;
+  uint64 job_id = 2; // 兼容：非 0 时等同 client_capture_id 查询
+  uint64 client_capture_id = 3; // 优先于 job_id；均为 0 表示最近一次完成的采集
+}
+
+// 单路相机在共享内存中的 raw 引用（与 ShmFrameRef 同语义，附加业务标识）
+message CameraRawFrameRef {
+  ShmFrameRef frame = 1;
+  uint32 camera_index = 2;       // 0 为最左
+  string serial_number = 3;
+  string ip = 4;
+  string manager_device_id = 5;
+  uint32 channels = 6;           // 0 表示由 pixel_format 推断
+  uint32 row_step_bytes = 7;   // 0 表示紧密行（step = width * elem_bytes）
+  // 单次硬触发内多帧：0..N-1，与 Hub 配置 frames_per_hardware_trigger 一致；单帧采集恒为 0
+  uint32 burst_frame_index = 8;
+}
+
+message DepthReply {
+  Status status = 1;
+  // 兼容：无管线时等同 raw；有管线时等同 final_frame
+  ShmFrameRef frame = 2;
+  ShmFrameRef raw_frame = 3;
+  ShmFrameRef intermediate_frame = 4;
+  ShmFrameRef final_frame = 5;
+  uint64 client_capture_id = 6;
+  // 多相机：按配置文件 cameras 从左到右顺序，每路各自 ShmFrameRef + 标识（算法侧据此组 cv::Mat）
+  repeated CameraRawFrameRef camera_raw_frames = 10;
+}
+
+message PointCloudRequest {
+  string session_id = 1;
+  uint64 job_id = 2;
+}
+
+message PointCloudReply {
+  Status status = 1;
+  ShmFrameRef frame = 2;
+}
+
+message DetectionResultRequest {
+  string session_id = 1;
+  uint64 job_id = 2;
+}
+
+message DetectionResultReply {
+  Status status = 1;
+  ShmFrameRef frame = 2; // 结构化结果序列化后置于共享内存
+}
+
+// ---------------------------------------------------------------------------
+// 联调：重建回传 echo 帧后 Hub 侧落盘（与重建侧保存规则一致，便于对照）
+// ---------------------------------------------------------------------------
+
+message HubTestSaveReconEchoRequest {
+  ShmFrameRef echo_frame = 1;
+  uint32 echo_slot_index = 2; // echo 环形缓冲槽位索引（与 ShmFrameRef.seq 一起校验）
+  uint64 client_capture_id = 3;
+}
+
+message HubTestSaveReconEchoReply {
+  Status status = 1;
+}
+
+// ---------------------------------------------------------------------------
+// 服务：保持单 service 多 RPC，便于后续拆分为独立 proto 文件（package 不变）
+// ---------------------------------------------------------------------------
+
+service CameraHub {
+  rpc Connect(ConnectRequest) returns (ConnectReply);
+  rpc Disconnect(DisconnectRequest) returns (DisconnectReply);
+  rpc Capture(CaptureRequest) returns (CaptureReply);
+  rpc SetExposure(ExposureRequest) returns (ExposureReply);
+  rpc GetExposure(ExposureRequest) returns (ExposureReply);
+  rpc SetGain(GainRequest) returns (GainReply);
+  rpc GetGain(GainRequest) returns (GainReply);
+  rpc SetParameters(SetParametersRequest) returns (SetParametersReply);
+  rpc GetParameters(GetParametersRequest) returns (GetParametersReply);
+  rpc GetDepth(DepthRequest) returns (DepthReply);
+  rpc GetPointCloud(PointCloudRequest) returns (PointCloudReply);
+  rpc GetDetectionResult(DetectionResultRequest) returns (DetectionResultReply);
+  // 联调：保存重建回写到 echo 共享内存的原始图（编译开关 CAMERA3D_ENABLE_RECON_SHM_LOOPBACK_TEST）
+  rpc TestSaveReconEcho(HubTestSaveReconEchoRequest) returns (HubTestSaveReconEchoReply);
+}
